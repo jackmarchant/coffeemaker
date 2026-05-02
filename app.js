@@ -1,4 +1,4 @@
-const STORAGE_KEY = "grounds.beans.v1";
+const STORAGE_KEY = "grounds.beans.v2";
 
 function loadBeans() {
   try {
@@ -22,7 +22,7 @@ function seedIfEmpty() {
       name: "Ethiopia Yirgacheffe",
       roaster: "Blue Bottle",
       rating: 5,
-      grindSize: "Medium-fine",
+      roastType: "Medium-Light",
       notes: "",
       favorite: true,
     },
@@ -31,7 +31,7 @@ function seedIfEmpty() {
       name: "Colombia Huila",
       roaster: "Onyx",
       rating: 4,
-      grindSize: "Medium",
+      roastType: "Medium",
       notes: "",
       favorite: false,
     },
@@ -170,7 +170,7 @@ function initEditPage() {
   if (existing) {
     document.getElementById("name").value = existing.name || "";
     document.getElementById("roaster").value = existing.roaster || "";
-    document.getElementById("grindSize").value = existing.grindSize || "";
+    document.getElementById("roastType").value = existing.roastType || "";
     document.getElementById("notes").value = existing.notes || "";
     document.getElementById("favorite").checked = !!existing.favorite;
     setRating(Number(existing.rating) || 0);
@@ -197,7 +197,7 @@ function initEditPage() {
       name,
       roaster: document.getElementById("roaster").value.trim(),
       rating: Number(document.getElementById("rating").value) || 0,
-      grindSize: document.getElementById("grindSize").value,
+      roastType: document.getElementById("roastType").value,
       notes: document.getElementById("notes").value.trim(),
       favorite: document.getElementById("favorite").checked,
     };
