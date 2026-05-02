@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grounds — Coffee Bean Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="brand">
+      <span class="brand-icon" aria-hidden="true">&#9749;</span>
+      <span class="brand-name">Grounds</span>
+    </a>
+    <nav class="topnav">
+      <button class="pill pill-active" type="button">Beans</button>
+      <a class="pill" href="edit.html">+ Add</a>
+      <button class="pill" type="button" id="shareBtn">Share</button>
+    </nav>
+  </header>
+
+  <main class="content">
+    <p class="count" id="count">0 BEANS</p>
+    <ul class="bean-list" id="beanList"></ul>
+    <div class="empty" id="empty" hidden>
+      <p>No beans yet. Tap the + button to add your first.</p>
+    </div>
+  </main>
+
+  <a class="fab" href="edit.html" aria-label="Add bean">
+    <span aria-hidden="true">+</span>
+  </a>
+
+  <script src="app.js"></script>
+  <script>renderList();</script>
+</body>
+</html>
