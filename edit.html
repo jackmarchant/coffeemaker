@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Bean — Grounds</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a href="index.html" class="brand">
+      <span class="brand-icon" aria-hidden="true">&#9749;</span>
+      <span class="brand-name">Grounds</span>
+    </a>
+    <nav class="topnav">
+      <a class="pill" href="index.html">Beans</a>
+      <a class="pill pill-active" href="edit.html">+ Add</a>
+    </nav>
+  </header>
+
+  <main class="content">
+    <h1 class="page-title" id="pageTitle">Add Bean</h1>
+
+    <form id="beanForm" class="form" novalidate>
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input type="text" name="name" id="name" required placeholder="Ethiopia Yirgacheffe" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Roaster</span>
+        <input type="text" name="roaster" id="roaster" placeholder="Blue Bottle" />
+      </label>
+
+      <div class="field">
+        <span class="field-label">Rating</span>
+        <div class="rating-input" id="ratingInput" role="radiogroup" aria-label="Rating">
+          <button type="button" class="star-btn" data-value="1" aria-label="1 star">&#9733;</button>
+          <button type="button" class="star-btn" data-value="2" aria-label="2 stars">&#9733;</button>
+          <button type="button" class="star-btn" data-value="3" aria-label="3 stars">&#9733;</button>
+          <button type="button" class="star-btn" data-value="4" aria-label="4 stars">&#9733;</button>
+          <button type="button" class="star-btn" data-value="5" aria-label="5 stars">&#9733;</button>
+          <input type="hidden" name="rating" id="rating" value="0" />
+        </div>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Grind size</span>
+        <select name="grindSize" id="grindSize">
+          <option value="">Select grind size</option>
+          <option value="Extra coarse">Extra coarse</option>
+          <option value="Coarse">Coarse</option>
+          <option value="Medium-coarse">Medium-coarse</option>
+          <option value="Medium">Medium</option>
+          <option value="Medium-fine">Medium-fine</option>
+          <option value="Fine">Fine</option>
+          <option value="Extra fine">Extra fine</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field-label">Notes</span>
+        <textarea name="notes" id="notes" rows="4" placeholder="Tasting notes, brew method, anything memorable..."></textarea>
+      </label>
+
+      <label class="checkbox-field">
+        <input type="checkbox" name="favorite" id="favorite" />
+        <span>Mark as favorite</span>
+      </label>
+
+      <div class="form-actions">
+        <a class="btn btn-secondary" href="index.html">Cancel</a>
+        <button type="button" class="btn btn-danger" id="deleteBtn" hidden>Delete</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </main>
+
+  <script src="app.js"></script>
+  <script>initEditPage();</script>
+</body>
+</html>
