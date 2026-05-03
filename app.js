@@ -119,7 +119,9 @@ async function renderList() {
 
   if (collectionParam && !viewingOwn) {
     label.hidden = false;
-    label.textContent = "Viewing a shared collection — set a name to contribute";
+    label.textContent = currentUser
+      ? "Viewing a shared collection"
+      : "Viewing a shared collection — set a name to contribute";
   } else if (currentUser) {
     label.hidden = false;
     label.textContent = "Your collection · share the URL to invite others";
@@ -192,7 +194,7 @@ async function renderList() {
       }
       const url = `${window.location.origin}${window.location.pathname}?collection=${encodeURIComponent(currentUser.id)}`;
       if (navigator.share) {
-        try { await navigator.share({ title: "My Grounds collection", url }); return; } catch { /* cancelled */ }
+        try { await navigator.share({ title: "My Jack's Coffee Beans collection", url }); return; } catch { /* cancelled */ }
       }
       try {
         await navigator.clipboard.writeText(url);
