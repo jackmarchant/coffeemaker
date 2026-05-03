@@ -1,6 +1,8 @@
 const config = window.GROUNDS_CONFIG || {};
 const sb = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
 
+const LOCAL_USER_KEY = "grounds.user.v1";
+
 let currentUser = null;
 let currentCollectionId = null;
 
@@ -8,46 +10,58 @@ function getQueryParam(key) {
   return new URLSearchParams(window.location.search).get(key);
 }
 
-function displayName(user) {
-  return (
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email ||
-    "Anonymous"
-  );
+function loadLocalUser() {
+  try {
+    const raw = localStorage.getItem(LOCAL_USER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.id && parsed.name) return parsed;
+  } catch {}
+  return null;
 }
 
-async function loadSession() {
-  const { data: { session } } = await sb.auth.getSession();
-  currentUser = session?.user || null;
+function saveLocalUser(user) {
+  localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(user));
+}
+
+function loadSession() {
+  currentUser = loadLocalUser();
   const urlCollection = getQueryParam("collection");
   currentCollectionId = urlCollection || (currentUser ? currentUser.id : null);
 }
 
-async function signInWithGoogle() {
-  await sb.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: window.location.href },
-  });
-}
-
-async function signOut() {
-  await sb.auth.signOut();
-  window.location.href = "index.html";
+function promptForName(onSet) {
+  const current = currentUser?.name || "";
+  const input = window.prompt("Display name (shown next to beans you add):", current);
+  if (input === null) return;
+  const name = input.trim();
+  if (!name) return;
+  if (currentUser) {
+    currentUser.name = name;
+  } else {
+    currentUser = { id: crypto.randomUUID(), name };
+  }
+  saveLocalUser(currentUser);
+  if (typeof onSet === "function") onSet();
 }
 
 function renderAuthBox() {
   const box = document.getElementById("authBox");
   if (!box) return;
   if (currentUser) {
-    box.innerHTML = `
-      <span class="user-chip" title="${escapeHtml(currentUser.email || "")}">${escapeHtml(displayName(currentUser))}</span>
-      <button class="pill" type="button" id="logoutBtn">Sign out</button>
-    `;
-    document.getElementById("logoutBtn").addEventListener("click", signOut);
+    box.innerHTML = `<button class="pill user-chip" type="button" id="renameBtn" title="Click to change your display name">${escapeHtml(currentUser.name)}</button>`;
+    document.getElementById("renameBtn").addEventListener("click", () => promptForName(refreshPage));
   } else {
-    box.innerHTML = `<button class="pill" type="button" id="loginBtn">Sign in with Google</button>`;
-    document.getElementById("loginBtn").addEventListener("click", signInWithGoogle);
+    box.innerHTML = `<button class="pill" type="button" id="setNameBtn">Set name</button>`;
+    document.getElementById("setNameBtn").addEventListener("click", () => promptForName(refreshPage));
+  }
+}
+
+function refreshPage() {
+  if (document.getElementById("beanList")) {
+    renderList();
+  } else if (document.getElementById("beanForm")) {
+    initEditPage();
   }
 }
 
@@ -88,7 +102,7 @@ async function fetchBeans() {
 }
 
 async function renderList() {
-  await loadSession();
+  loadSession();
   renderAuthBox();
 
   const list = document.getElementById("beanList");
@@ -105,10 +119,10 @@ async function renderList() {
 
   if (collectionParam && !viewingOwn) {
     label.hidden = false;
-    label.textContent = "Viewing a shared collection — sign in to contribute";
+    label.textContent = "Viewing a shared collection — set a name to contribute";
   } else if (currentUser) {
     label.hidden = false;
-    label.textContent = `Your collection · share the URL to invite others`;
+    label.textContent = "Your collection · share the URL to invite others";
   } else {
     label.hidden = true;
   }
@@ -121,7 +135,7 @@ async function renderList() {
     count.textContent = "0 BEANS";
     list.innerHTML = "";
     empty.hidden = false;
-    emptyMsg.textContent = "Sign in to start your collection.";
+    emptyMsg.textContent = "Set a name to start your collection.";
     return;
   }
 
@@ -173,7 +187,7 @@ async function renderList() {
   if (shareBtn) {
     shareBtn.addEventListener("click", async () => {
       if (!currentUser) {
-        showToast("Sign in to get a shareable link");
+        promptForName(refreshPage);
         return;
       }
       const url = `${window.location.origin}${window.location.pathname}?collection=${encodeURIComponent(currentUser.id)}`;
@@ -221,7 +235,7 @@ async function fetchBeanById(id) {
 }
 
 async function initEditPage() {
-  await loadSession();
+  loadSession();
   renderAuthBox();
 
   const form = document.getElementById("beanForm");
@@ -237,10 +251,13 @@ async function initEditPage() {
   if (!currentUser) {
     gate.hidden = false;
     form.hidden = true;
-    document.getElementById("gateLoginBtn").addEventListener("click", signInWithGoogle);
+    document.getElementById("gateLoginBtn").addEventListener("click", () => promptForName(refreshPage));
     document.getElementById("pageTitle").textContent = beanId ? "Edit Bean" : "Add Bean";
     return;
   }
+
+  gate.hidden = true;
+  form.hidden = false;
 
   let existing = null;
   if (beanId) {
@@ -300,7 +317,7 @@ async function initEditPage() {
     const payload = {
       collection_id: targetCollection,
       added_by: currentUser.id,
-      added_by_name: displayName(currentUser),
+      added_by_name: currentUser.name,
       name,
       roaster: document.getElementById("roaster").value.trim() || null,
       rating: Number(document.getElementById("rating").value) || 0,

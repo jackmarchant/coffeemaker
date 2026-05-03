@@ -1,9 +1,9 @@
--- Run this in the Supabase SQL editor once.
+-- Idempotent. Safe to re-run; will migrate from the previous (Google-auth) version.
 
 create table if not exists public.beans (
   id uuid primary key default gen_random_uuid(),
   collection_id uuid not null,
-  added_by uuid not null references auth.users(id) on delete cascade,
+  added_by uuid not null,
   added_by_name text,
   name text not null,
   roaster text,
@@ -13,6 +13,14 @@ create table if not exists public.beans (
   favorite boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- Drop the old FK to auth.users if a previous version of this script created it.
+do $$
+begin
+  if exists (select 1 from pg_constraint where conname = 'beans_added_by_fkey') then
+    alter table public.beans drop constraint beans_added_by_fkey;
+  end if;
+end$$;
 
 create index if not exists beans_collection_id_idx on public.beans (collection_id, created_at desc);
 
@@ -24,20 +32,23 @@ create policy beans_select_all
   using (true);
 
 drop policy if exists beans_insert_own on public.beans;
-create policy beans_insert_own
+drop policy if exists beans_insert_anon on public.beans;
+create policy beans_insert_anon
   on public.beans for insert
-  to authenticated
-  with check (added_by = auth.uid());
+  to anon, authenticated
+  with check (true);
 
 drop policy if exists beans_update_own on public.beans;
-create policy beans_update_own
+drop policy if exists beans_update_anon on public.beans;
+create policy beans_update_anon
   on public.beans for update
-  to authenticated
-  using (added_by = auth.uid())
-  with check (added_by = auth.uid());
+  to anon, authenticated
+  using (true)
+  with check (true);
 
 drop policy if exists beans_delete_own on public.beans;
-create policy beans_delete_own
+drop policy if exists beans_delete_anon on public.beans;
+create policy beans_delete_anon
   on public.beans for delete
-  to authenticated
-  using (added_by = auth.uid());
+  to anon, authenticated
+  using (true);
