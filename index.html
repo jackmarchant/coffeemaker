@@ -14,23 +14,27 @@
     </a>
     <nav class="topnav">
       <button class="pill pill-active" type="button">Beans</button>
-      <a class="pill" href="edit.html">+ Add</a>
+      <a class="pill" id="addLink" href="edit.html">+ Add</a>
       <button class="pill" type="button" id="shareBtn">Share</button>
+      <span id="authBox" class="auth-box"></span>
     </nav>
   </header>
 
   <main class="content">
+    <p class="collection-label" id="collectionLabel" hidden></p>
     <p class="count" id="count">0 BEANS</p>
     <ul class="bean-list" id="beanList"></ul>
     <div class="empty" id="empty" hidden>
-      <p>No beans yet. Tap the + button to add your first.</p>
+      <p id="emptyMessage">No beans yet. Tap the + button to add your first.</p>
     </div>
   </main>
 
-  <a class="fab" href="edit.html" aria-label="Add bean">
+  <a class="fab" id="addFab" href="edit.html" aria-label="Add bean">
     <span aria-hidden="true">+</span>
   </a>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
   <script>renderList();</script>
 </body>
