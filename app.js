@@ -10,6 +10,19 @@ function getQueryParam(key) {
   return new URLSearchParams(window.location.search).get(key);
 }
 
+function hasEditFlag() {
+  return getQueryParam("edit") === "1";
+}
+
+function buildHref(base, { collection, edit, id } = {}) {
+  const params = new URLSearchParams();
+  if (id) params.set("id", id);
+  if (collection) params.set("collection", collection);
+  if (edit) params.set("edit", "1");
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
 function loadLocalUser() {
   try {
     const raw = localStorage.getItem(LOCAL_USER_KEY);
@@ -115,13 +128,15 @@ async function renderList() {
   if (!list) return;
 
   const collectionParam = getQueryParam("collection");
+  const canEdit = hasEditFlag();
   const viewingOwn = currentUser && (!collectionParam || collectionParam === currentUser.id);
 
   if (collectionParam && !viewingOwn) {
+    const suffix = canEdit ? " — edit access" : "";
     label.hidden = false;
     label.textContent = currentUser
-      ? "Viewing a shared collection"
-      : "Viewing a shared collection — set a name to contribute";
+      ? `Viewing a shared collection${suffix}`
+      : `Viewing a shared collection${suffix} — set a name to contribute`;
   } else if (currentUser) {
     label.hidden = false;
     label.textContent = "Your collection · share the URL to invite others";
@@ -129,7 +144,7 @@ async function renderList() {
     label.hidden = true;
   }
 
-  const editHref = `edit.html${collectionParam ? `?collection=${encodeURIComponent(collectionParam)}` : ""}`;
+  const editHref = buildHref("edit.html", { collection: collectionParam, edit: canEdit });
   if (addLink) addLink.href = editHref;
   if (addFab) addFab.href = editHref;
 
@@ -157,8 +172,9 @@ async function renderList() {
   list.innerHTML = beans
     .map((b) => {
       const ownedByMe = currentUser && b.added_by === currentUser.id;
+      const editable = currentUser && (ownedByMe || canEdit);
       return `
-      <li class="bean-card${ownedByMe ? "" : " bean-card-readonly"}" data-id="${escapeHtml(b.id)}" data-owned="${ownedByMe ? "1" : "0"}" tabindex="0" role="button" aria-label="${ownedByMe ? "Edit" : "View"} ${escapeHtml(b.name)}">
+      <li class="bean-card${editable ? "" : " bean-card-readonly"}" data-id="${escapeHtml(b.id)}" data-editable="${editable ? "1" : "0"}" tabindex="0" role="button" aria-label="${editable ? "Edit" : "View"} ${escapeHtml(b.name)}">
         <div class="bean-info">
           <h2 class="bean-name">${b.favorite ? '<span aria-label="favorite">❤️</span>' : ""}${escapeHtml(b.name)}</h2>
           <p class="bean-roaster">${escapeHtml(b.roaster || "")}</p>
@@ -173,9 +189,9 @@ async function renderList() {
 
   list.querySelectorAll(".bean-card").forEach((card) => {
     const id = card.getAttribute("data-id");
-    const owned = card.getAttribute("data-owned") === "1";
-    if (!owned) return;
-    const href = `edit.html?id=${encodeURIComponent(id)}${collectionParam ? `&collection=${encodeURIComponent(collectionParam)}` : ""}`;
+    const editable = card.getAttribute("data-editable") === "1";
+    if (!editable) return;
+    const href = buildHref("edit.html", { id, collection: collectionParam, edit: canEdit });
     card.addEventListener("click", () => { window.location.href = href; });
     card.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -192,13 +208,20 @@ async function renderList() {
         promptForName(refreshPage);
         return;
       }
-      const url = `${window.location.origin}${window.location.pathname}?collection=${encodeURIComponent(currentUser.id)}`;
+      const grantEdit = window.confirm(
+        "Share with edit access?\n\nOK = others can add, edit, and delete beans in your collection.\nCancel = view-only link."
+      );
+      const url = `${window.location.origin}${window.location.pathname}` +
+        buildHref("", { collection: currentUser.id, edit: grantEdit });
+      const title = grantEdit
+        ? "My Jack's Coffee Beans collection (edit access)"
+        : "My Jack's Coffee Beans collection";
       if (navigator.share) {
-        try { await navigator.share({ title: "My Jack's Coffee Beans collection", url }); return; } catch { /* cancelled */ }
+        try { await navigator.share({ title, url }); return; } catch { /* cancelled */ }
       }
       try {
         await navigator.clipboard.writeText(url);
-        showToast("Share link copied to clipboard");
+        showToast(grantEdit ? "Edit link copied to clipboard" : "Share link copied to clipboard");
       } catch {
         showToast(url);
       }
@@ -246,7 +269,8 @@ async function initEditPage() {
 
   const beanId = getQueryParam("id");
   const collectionParam = getQueryParam("collection");
-  const backHref = `index.html${collectionParam ? `?collection=${encodeURIComponent(collectionParam)}` : ""}`;
+  const canEdit = hasEditFlag();
+  const backHref = buildHref("index.html", { collection: collectionParam, edit: canEdit });
   document.getElementById("backLink").href = backHref;
   document.getElementById("cancelLink").href = backHref;
 
@@ -269,7 +293,7 @@ async function initEditPage() {
       window.location.href = backHref;
       return;
     }
-    if (existing.added_by !== currentUser.id) {
+    if (existing.added_by !== currentUser.id && !canEdit) {
       showToast("You can only edit beans you added");
       window.location.href = backHref;
       return;
