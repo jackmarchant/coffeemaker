@@ -125,6 +125,7 @@ async function renderList() {
   const label = document.getElementById("collectionLabel");
   const addLink = document.getElementById("addLink");
   const addFab = document.getElementById("addFab");
+  const loading = document.getElementById("loading");
   if (!list) return;
 
   const collectionParam = getQueryParam("collection");
@@ -153,10 +154,18 @@ async function renderList() {
     list.innerHTML = "";
     empty.hidden = false;
     emptyMsg.textContent = "Set a name to start your collection.";
+    if (loading) loading.hidden = true;
     return;
   }
 
+  list.innerHTML = "";
+  empty.hidden = true;
+  count.textContent = "";
+  if (loading) loading.hidden = false;
+
   const beans = await fetchBeans();
+
+  if (loading) loading.hidden = true;
   count.textContent = `${beans.length} ${beans.length === 1 ? "BEAN" : "BEANS"}`;
 
   if (beans.length === 0) {
