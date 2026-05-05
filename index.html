@@ -31,6 +31,17 @@
   <main class="content">
     <p class="collection-label" id="collectionLabel" hidden></p>
     <p class="count" id="count">0 BEANS</p>
+    <div class="coffee-loader" id="loading" hidden aria-live="polite" aria-label="Loading beans">
+      <div class="coffee-cup-wrap">
+        <div class="coffee-steam" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="coffee-cup">
+          <div class="coffee-fill"></div>
+        </div>
+      </div>
+      <p class="loading-text">Brewing your beans</p>
+    </div>
     <ul class="bean-list" id="beanList"></ul>
     <div class="empty" id="empty" hidden>
       <p id="emptyMessage">No beans yet. Tap the + button to add your first.</p>
