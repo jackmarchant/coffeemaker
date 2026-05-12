@@ -219,6 +219,10 @@ a {
   gap: 14px;
 }
 
+.auth-gate[hidden] {
+  display: none;
+}
+
 .bean-stars {
   font-size: 22px;
   color: var(--star);
