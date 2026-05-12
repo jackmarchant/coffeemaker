@@ -14,7 +14,26 @@ The app uses Supabase Postgres so collections persist and can be shared with fri
      SUPABASE_ANON_KEY: "sb_publishable_...",
    };
    ```
-4. Serve the directory (e.g. `python -m http.server` or deploy to Netlify).
+4. Serve the directory (e.g. `python -m http.server`).
+5. Install the git hooks so cache busting runs on commit:
+   ```
+   git config core.hooksPath .githooks
+   ```
+
+## Cache busting
+
+`styles.css` and `app.js` are referenced from the HTML with a `?v=<hash>` query
+string. `scripts/bust-cache.sh` rewrites that hash from the file's content; the
+pre-commit hook in `.githooks/pre-commit` runs it automatically and re-stages
+the HTML if anything changed. `config.js`, `manifest.json`, and `icon.svg` are
+not busted — edit them and the browser picks up the change on its normal
+revalidation cycle.
+
+For maximum cache lifetime on the EC2 server, pair this with HTTP headers:
+`Cache-Control: public, max-age=31536000, immutable` for `*.css`/`*.js`, and
+`Cache-Control: public, max-age=0, must-revalidate` for `*.html` and
+`config.js`. Without those headers cache busting still works correctly — you
+just don't get the long-lived cache benefit.
 
 ## How it works
 
