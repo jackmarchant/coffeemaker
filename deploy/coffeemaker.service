@@ -1,11 +1,18 @@
-# systemd unit to run coffeemaker on an EC2 instance.
+# systemd unit to run coffeemaker as a background service on Linux.
 #
 # Install:
+#   # 1. find your node path (IMPORTANT if you installed node with nvm):
+#   which node
+#   # 2. edit ExecStart below to use that exact path, plus User/WorkingDirectory
 #   sudo cp deploy/coffeemaker.service /etc/systemd/system/
 #   sudo systemctl daemon-reload
-#   sudo systemctl enable --now coffeemaker
+#   sudo systemctl enable --now coffeemaker     # start now + on every boot
+#   systemctl status coffeemaker                # check it's running
+#   journalctl -u coffeemaker -f                # follow the logs
 #
 # Adjust User, WorkingDirectory and the node path to match your instance.
+# nvm installs node under your home dir, e.g.
+#   /home/ec2-user/.nvm/versions/node/v22.x.x/bin/node
 [Unit]
 Description=coffeemaker (Jack's Coffee Beans)
 After=network.target
@@ -16,6 +23,8 @@ User=ec2-user
 WorkingDirectory=/home/ec2-user/coffeemaker
 Environment=PORT=8080
 Environment=DB_PATH=/home/ec2-user/coffeemaker/data/beans.db
+# Use the absolute path from `which node`. /usr/bin/node is correct only for a
+# system (NodeSource/dnf) install; for nvm use the path under ~/.nvm/...
 ExecStart=/usr/bin/node --experimental-sqlite server.js
 Restart=on-failure
 RestartSec=2

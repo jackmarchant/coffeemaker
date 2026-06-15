@@ -58,17 +58,40 @@ node --experimental-sqlite migrate.js    # same as: npm run migrate
 
 The systemd unit below already calls `node` directly, not npm.
 
-### Running it on EC2
+### Running it on a Linux server (in the background)
 
-A sample systemd unit lives in `deploy/coffeemaker.service`. Edit the paths and
-user to match your instance, then:
+Use **systemd** so the server runs in the background, restarts if it crashes,
+and comes back after a reboot. A sample unit lives in
+`deploy/coffeemaker.service`.
+
 ```
+# 1. Find your node path — required if you installed node with nvm:
+which node
+#    nvm prints something like /home/ec2-user/.nvm/versions/node/v22.x.x/bin/node
+#    a system (NodeSource) install prints /usr/bin/node
+
+# 2. Edit deploy/coffeemaker.service: set ExecStart to that node path, and
+#    adjust User and WorkingDirectory to match your instance.
+
+# 3. Install and start it:
 sudo cp deploy/coffeemaker.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now coffeemaker
+sudo systemctl enable --now coffeemaker     # start now + on every boot
 ```
+
+Manage and inspect it:
+```
+systemctl status coffeemaker        # is it running?
+journalctl -u coffeemaker -f        # follow the logs
+sudo systemctl restart coffeemaker  # after pulling new code
+```
+
 Put nginx (or the AWS load balancer) in front for TLS if you want HTTPS. Back up
 your data by copying the `data/` directory — that file *is* your database.
+
+> **Quick test without systemd:** to background it ad-hoc, use
+> `nohup node --experimental-sqlite server.js > coffeemaker.log 2>&1 &`. This
+> won't survive a reboot — prefer systemd for anything real.
 
 ## Migrating off Supabase
 
