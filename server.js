@@ -8,7 +8,7 @@
 //   DB_PATH   path to the SQLite file (default ./data/beans.db)
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
+import { basename, extname, join } from "node:path";
 import {
   listBeans,
   getBean,
@@ -19,6 +19,19 @@ import {
 
 const PORT = Number(process.env.PORT) || 8080;
 const PUBLIC_DIR = process.cwd();
+
+// Only these files are served. An explicit allowlist (rather than "anything
+// under PUBLIC_DIR") keeps the database, .git, server source and any other
+// files in the working directory unreachable over HTTP.
+const PUBLIC_FILES = new Set([
+  "index.html",
+  "edit.html",
+  "app.js",
+  "styles.css",
+  "config.js",
+  "manifest.json",
+  "icon.svg",
+]);
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -99,19 +112,20 @@ async function serveStatic(req, res, url) {
   if (req.method !== "GET" && req.method !== "HEAD") {
     return sendJson(res, 405, { error: "method not allowed" });
   }
-  let pathname = decodeURIComponent(url.pathname);
-  if (pathname === "/") pathname = "/index.html";
+  let name = decodeURIComponent(url.pathname).replace(/^\/+/, "");
+  if (name === "") name = "index.html";
 
-  // Prevent path traversal: resolve within PUBLIC_DIR only.
-  const filePath = normalize(join(PUBLIC_DIR, pathname));
-  if (!filePath.startsWith(PUBLIC_DIR)) {
-    res.writeHead(403).end("Forbidden");
+  // Serve only files on the allowlist. basename() collapses any path so a
+  // request can never reach the database, .git, server source, or a sibling
+  // directory — even via encoded traversal sequences.
+  if (basename(name) !== name || !PUBLIC_FILES.has(name)) {
+    res.writeHead(404, { "Content-Type": "text/plain" }).end("Not found");
     return;
   }
 
   try {
-    const data = await readFile(filePath);
-    const type = MIME[extname(filePath)] || "application/octet-stream";
+    const data = await readFile(join(PUBLIC_DIR, name));
+    const type = MIME[extname(name)] || "application/octet-stream";
     res.writeHead(200, { "Content-Type": type });
     res.end(req.method === "HEAD" ? undefined : data);
   } catch {
