@@ -3,22 +3,56 @@ Coffee making app
 
 ## Setup
 
-The app uses Supabase Postgres so collections persist and can be shared with friends who can contribute their own beans.
+The app is fully self-hosted: a small Node server (`server.js`) serves the
+front-end **and** a JSON API backed by a single **SQLite file** on disk. No
+Supabase, no subscription, no external dependencies — just Node.
 
-1. Create a Supabase project at https://supabase.com.
-2. In the SQL editor, run `schema.sql` from this repo to create the `beans` table and Row Level Security policies. (The script is idempotent — safe to re-run.)
-3. Copy your project's **URL** and **publishable / anon public key** from **Project Settings → API** into `config.js`:
-   ```js
-   window.GROUNDS_CONFIG = {
-     SUPABASE_URL: "https://xxxx.supabase.co",
-     SUPABASE_ANON_KEY: "sb_publishable_...",
-   };
+> Requires **Node 22.5+** (for the built-in `node:sqlite` module). The
+> `--experimental-sqlite` flag is already wired into the npm scripts.
+
+1. Start the server:
    ```
-4. Serve the directory (e.g. `python -m http.server`).
-5. Install the git hooks so cache busting runs on commit:
+   npm start
+   ```
+   It listens on `http://localhost:8080` and creates the database at
+   `./data/beans.db` on first run. Override with env vars:
+   - `PORT` — port to listen on (default `8080`)
+   - `DB_PATH` — where the SQLite file lives (default `./data/beans.db`)
+2. Install the git hooks so cache busting runs on commit:
    ```
    git config core.hooksPath .githooks
    ```
+
+### Running it on EC2
+
+A sample systemd unit lives in `deploy/coffeemaker.service`. Edit the paths and
+user to match your instance, then:
+```
+sudo cp deploy/coffeemaker.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now coffeemaker
+```
+Put nginx (or the AWS load balancer) in front for TLS if you want HTTPS. Back up
+your data by copying the `data/` directory — that file *is* your database.
+
+## Migrating off Supabase
+
+To copy every existing bean out of Supabase into your local SQLite file
+**automatically** (no manual export):
+
+```
+npm run migrate
+```
+
+It reads all rows from the old Supabase project and writes them into
+`./data/beans.db`. The script is **idempotent** (rows are matched by `id`), so
+it's safe to run more than once — run it on EC2 once the server is up, confirm
+your beans show in the app, then cancel the Supabase subscription. Point it at a
+different project or key with the `SUPABASE_URL` / `SUPABASE_ANON_KEY` env vars,
+and target a different file with `DB_PATH`.
+
+The old Postgres `schema.sql` is kept for reference only; the live schema now
+lives in `db.js`.
 
 ## Cache busting
 

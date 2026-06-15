@@ -1,4 +1,6 @@
 window.GROUNDS_CONFIG = {
-  SUPABASE_URL: "https://wiccvoradplsbjsjruwj.supabase.co",
-  SUPABASE_ANON_KEY: "sb_publishable_p7SKz3ljZl7_0HfmzDk-pQ_KqJSyp7n",
+  // The app talks to its own backend (server.js). Leave API_BASE empty to use
+  // the same origin the page is served from. Set it only if the API is hosted
+  // elsewhere, e.g. "https://api.example.com".
+  API_BASE: "",
 };

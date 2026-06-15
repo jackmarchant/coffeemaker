@@ -1,0 +1,14 @@
+{
+  "name": "coffeemaker",
+  "version": "1.0.0",
+  "description": "Coffee bean collection app with a self-hosted SQLite file database.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node --experimental-sqlite server.js",
+    "migrate": "node --experimental-sqlite migrate.js"
+  }
+}
