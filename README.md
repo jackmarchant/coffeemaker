@@ -7,8 +7,31 @@ The app is fully self-hosted: a small Node server (`server.js`) serves the
 front-end **and** a JSON API backed by a single **SQLite file** on disk. No
 Supabase, no subscription, no external dependencies — just Node.
 
-> Requires **Node 22.5+** (for the built-in `node:sqlite` module). The
-> `--experimental-sqlite` flag is already wired into the npm scripts.
+> Requires **Node 22.5+** (for the built-in `node:sqlite` module). There are
+> **no npm dependencies** — npm is only a shortcut for the commands below, and
+> you can run `node` directly instead (see "No npm? No problem").
+
+### Installing Node
+
+The default Node in most OS package repos is older than 22.5, so install it with
+a version manager. This one line installs Node 22 (npm included) for your user,
+no `sudo` required, on any Linux/macOS box:
+
+```
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && . ~/.nvm/nvm.sh && nvm install 22
+```
+
+Then re-open your shell and confirm: `node -v` should print v22.5 or newer.
+
+Prefer the system package manager? On Amazon Linux 2023 / RHEL:
+
+```
+curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash - && sudo dnf install -y nodejs
+```
+
+(On Ubuntu/Debian swap `rpm`→`deb` and `dnf`→`apt-get`.)
+
+### Running it
 
 1. Start the server:
    ```
@@ -22,6 +45,18 @@ Supabase, no subscription, no external dependencies — just Node.
    ```
    git config core.hooksPath .githooks
    ```
+
+#### No npm? No problem
+
+npm ships with Node, so the install above gives you both. But since there are no
+dependencies, you never actually need npm — run `node` directly:
+
+```
+node --experimental-sqlite server.js     # same as: npm start
+node --experimental-sqlite migrate.js    # same as: npm run migrate
+```
+
+The systemd unit below already calls `node` directly, not npm.
 
 ### Running it on EC2
 
