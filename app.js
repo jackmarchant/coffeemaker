@@ -1,5 +1,21 @@
 const config = window.GROUNDS_CONFIG || {};
-const sb = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+// API base for the self-hosted backend. Defaults to same origin so the app
+// works wherever it's served from; override with API_BASE in config.js if the
+// API lives elsewhere.
+const API_BASE = (config.API_BASE || "").replace(/\/$/, "");
+
+async function api(path, options) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
 
 const LOCAL_USER_KEY = "grounds.user.v1";
 
@@ -101,17 +117,13 @@ function escapeHtml(str) {
 
 async function fetchBeans() {
   if (!currentCollectionId) return [];
-  const { data, error } = await sb
-    .from("beans")
-    .select("*")
-    .eq("collection_id", currentCollectionId)
-    .order("created_at", { ascending: false });
-  if (error) {
+  try {
+    return await api(`/api/beans?collection_id=${encodeURIComponent(currentCollectionId)}`);
+  } catch (error) {
     console.error("fetchBeans failed", error);
     showToast("Couldn't load beans");
     return [];
   }
-  return data || [];
 }
 
 async function renderList() {
@@ -260,12 +272,12 @@ function setRating(value) {
 }
 
 async function fetchBeanById(id) {
-  const { data, error } = await sb.from("beans").select("*").eq("id", id).maybeSingle();
-  if (error) {
+  try {
+    return await api(`/api/beans/${encodeURIComponent(id)}`);
+  } catch (error) {
     console.error("fetchBeanById failed", error);
     return null;
   }
-  return data;
 }
 
 async function initEditPage() {
@@ -327,8 +339,9 @@ async function initEditPage() {
     deleteBtn.hidden = false;
     deleteBtn.addEventListener("click", async () => {
       if (!confirm(`Delete "${existing.name}"?`)) return;
-      const { error } = await sb.from("beans").delete().eq("id", existing.id);
-      if (error) {
+      try {
+        await api(`/api/beans/${encodeURIComponent(existing.id)}`, { method: "DELETE" });
+      } catch (error) {
         console.error("delete failed", error);
         showToast("Couldn't delete bean");
         return;
@@ -361,13 +374,16 @@ async function initEditPage() {
       favorite: document.getElementById("favorite").checked,
     };
 
-    let error;
-    if (existing) {
-      ({ error } = await sb.from("beans").update(payload).eq("id", existing.id));
-    } else {
-      ({ error } = await sb.from("beans").insert(payload));
-    }
-    if (error) {
+    try {
+      if (existing) {
+        await api(`/api/beans/${encodeURIComponent(existing.id)}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await api("/api/beans", { method: "POST", body: JSON.stringify(payload) });
+      }
+    } catch (error) {
       console.error("save failed", error);
       showToast("Couldn't save bean");
       return;

@@ -1,0 +1,7 @@
+# Local SQLite database lives here — never commit your data.
+/data/
+*.db
+*.db-shm
+*.db-wal
+
+node_modules/
