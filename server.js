@@ -156,6 +156,18 @@ process.on("uncaughtException", (err) => {
   console.error("uncaughtException", err);
 });
 
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `Port ${PORT} is already in use — the server is probably already running. ` +
+        `Stop the existing one first:  sudo fuser -k ${PORT}/tcp`
+    );
+  } else {
+    console.error("server error", err);
+  }
+  process.exit(1);
+});
+
 server.listen(PORT, () => {
   console.log(`coffeemaker listening on http://localhost:${PORT}`);
 });
