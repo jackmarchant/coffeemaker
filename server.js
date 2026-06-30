@@ -134,12 +134,26 @@ async function serveStatic(req, res, url) {
 }
 
 const server = createServer((req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  // Parse against a constant base: we only need the path and query from the
+  // request, never the host. Building the base from the attacker-controlled
+  // Host header (and not catching) previously let a malformed Host crash the
+  // whole process. The try/catch also guards against a malformed request line.
+  let url;
+  try {
+    url = new URL(req.url, "http://localhost");
+  } catch {
+    return sendJson(res, 400, { error: "bad request" });
+  }
   if (url.pathname === "/api/beans" || url.pathname.startsWith("/api/beans/")) {
     handleApi(req, res, url);
   } else {
     serveStatic(req, res, url);
   }
+});
+
+// Last-resort backstop: never let an unexpected error take the server down.
+process.on("uncaughtException", (err) => {
+  console.error("uncaughtException", err);
 });
 
 server.listen(PORT, () => {
