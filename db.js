@@ -42,12 +42,10 @@ function rowToBean(row) {
   return { ...row, favorite: !!row.favorite };
 }
 
-export function listBeans(collectionId) {
+export function listBeans() {
   const rows = db
-    .prepare(
-      "SELECT * FROM beans WHERE collection_id = ? ORDER BY created_at DESC"
-    )
-    .all(collectionId);
+    .prepare("SELECT * FROM beans ORDER BY created_at DESC")
+    .all();
   return rows.map(rowToBean);
 }
 

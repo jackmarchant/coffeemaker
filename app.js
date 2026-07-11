@@ -20,21 +20,14 @@ async function api(path, options) {
 const LOCAL_USER_KEY = "grounds.user.v1";
 
 let currentUser = null;
-let currentCollectionId = null;
 
 function getQueryParam(key) {
   return new URLSearchParams(window.location.search).get(key);
 }
 
-function hasEditFlag() {
-  return getQueryParam("edit") === "1";
-}
-
-function buildHref(base, { collection, edit, id } = {}) {
+function buildHref(base, { id } = {}) {
   const params = new URLSearchParams();
   if (id) params.set("id", id);
-  if (collection) params.set("collection", collection);
-  if (edit) params.set("edit", "1");
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;
 }
@@ -55,8 +48,6 @@ function saveLocalUser(user) {
 
 function loadSession() {
   currentUser = loadLocalUser();
-  const urlCollection = getQueryParam("collection");
-  currentCollectionId = urlCollection || (currentUser ? currentUser.id : null);
 }
 
 function promptForName(onSet) {
@@ -116,9 +107,8 @@ function escapeHtml(str) {
 }
 
 async function fetchBeans() {
-  if (!currentCollectionId) return [];
   try {
-    return await api(`/api/beans?collection_id=${encodeURIComponent(currentCollectionId)}`);
+    return await api("/api/beans");
   } catch (error) {
     console.error("fetchBeans failed", error);
     showToast("Couldn't load beans");
@@ -134,41 +124,14 @@ async function renderList() {
   const count = document.getElementById("count");
   const empty = document.getElementById("empty");
   const emptyMsg = document.getElementById("emptyMessage");
-  const label = document.getElementById("collectionLabel");
   const addLink = document.getElementById("addLink");
   const addFab = document.getElementById("addFab");
   const loading = document.getElementById("loading");
   if (!list) return;
 
-  const collectionParam = getQueryParam("collection");
-  const canEdit = hasEditFlag();
-  const viewingOwn = currentUser && (!collectionParam || collectionParam === currentUser.id);
-
-  if (collectionParam && !viewingOwn) {
-    const suffix = canEdit ? " — edit access" : "";
-    label.hidden = false;
-    label.textContent = currentUser
-      ? `Viewing a shared collection${suffix}`
-      : `Viewing a shared collection${suffix} — set a name to contribute`;
-  } else if (currentUser) {
-    label.hidden = false;
-    label.textContent = "Your collection · share the URL to invite others";
-  } else {
-    label.hidden = true;
-  }
-
-  const editHref = buildHref("edit.html", { collection: collectionParam, edit: canEdit });
+  const editHref = buildHref("edit.html");
   if (addLink) addLink.href = editHref;
   if (addFab) addFab.href = editHref;
-
-  if (!currentCollectionId) {
-    count.textContent = "0 BEANS";
-    list.innerHTML = "";
-    empty.hidden = false;
-    emptyMsg.textContent = "Set a name to start your collection.";
-    if (loading) loading.hidden = true;
-    return;
-  }
 
   list.innerHTML = "";
   empty.hidden = true;
@@ -185,15 +148,14 @@ async function renderList() {
     empty.hidden = false;
     emptyMsg.textContent = currentUser
       ? "No beans yet. Tap the + button to add your first."
-      : "This collection is empty.";
+      : "No beans yet.";
     return;
   }
   empty.hidden = true;
 
   list.innerHTML = beans
     .map((b) => {
-      const ownedByMe = currentUser && b.added_by === currentUser.id;
-      const editable = currentUser && (ownedByMe || canEdit);
+      const editable = currentUser && b.added_by === currentUser.id;
       return `
       <li class="bean-card${editable ? "" : " bean-card-readonly"}" data-id="${escapeHtml(b.id)}" data-editable="${editable ? "1" : "0"}" tabindex="0" role="button" aria-label="${editable ? "Edit" : "View"} ${escapeHtml(b.name)}">
         <div class="bean-info">
@@ -212,7 +174,7 @@ async function renderList() {
     const id = card.getAttribute("data-id");
     const editable = card.getAttribute("data-editable") === "1";
     if (!editable) return;
-    const href = buildHref("edit.html", { id, collection: collectionParam, edit: canEdit });
+    const href = buildHref("edit.html", { id });
     card.addEventListener("click", () => { window.location.href = href; });
     card.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -221,33 +183,6 @@ async function renderList() {
       }
     });
   });
-
-  const shareBtn = document.getElementById("shareBtn");
-  if (shareBtn) {
-    shareBtn.addEventListener("click", async () => {
-      if (!currentUser) {
-        promptForName(refreshPage);
-        return;
-      }
-      const grantEdit = window.confirm(
-        "Share with edit access?\n\nOK = others can add, edit, and delete beans in your collection.\nCancel = view-only link."
-      );
-      const url = `${window.location.origin}${window.location.pathname}` +
-        buildHref("", { collection: currentUser.id, edit: grantEdit });
-      const title = grantEdit
-        ? "My Jack's Coffee Beans collection (edit access)"
-        : "My Jack's Coffee Beans collection";
-      if (navigator.share) {
-        try { await navigator.share({ title, url }); return; } catch { /* cancelled */ }
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        showToast(grantEdit ? "Edit link copied to clipboard" : "Share link copied to clipboard");
-      } catch {
-        showToast(url);
-      }
-    });
-  }
 }
 
 function showToast(message) {
@@ -289,9 +224,7 @@ async function initEditPage() {
   if (!form) return;
 
   const beanId = getQueryParam("id");
-  const collectionParam = getQueryParam("collection");
-  const canEdit = hasEditFlag();
-  const backHref = buildHref("index.html", { collection: collectionParam, edit: canEdit });
+  const backHref = buildHref("index.html");
   document.getElementById("backLink").href = backHref;
   document.getElementById("cancelLink").href = backHref;
 
@@ -314,7 +247,7 @@ async function initEditPage() {
       window.location.href = backHref;
       return;
     }
-    if (existing.added_by !== currentUser.id && !canEdit) {
+    if (existing.added_by !== currentUser.id) {
       showToast("You can only edit beans you added");
       window.location.href = backHref;
       return;
@@ -358,12 +291,8 @@ async function initEditPage() {
       return;
     }
 
-    const targetCollection = existing
-      ? existing.collection_id
-      : (collectionParam || currentUser.id);
-
     const payload = {
-      collection_id: targetCollection,
+      collection_id: currentUser.id,
       added_by: currentUser.id,
       added_by_name: currentUser.name,
       name,

@@ -72,7 +72,6 @@ just don't get the long-lived cache benefit.
 ## How it works
 
 - Each visitor picks a display name, which is stored in the browser's `localStorage` along with a generated UUID. There's no login.
-- Every visitor with a name has one collection, identified by their UUID.
-- The **Share** button copies a link of the form `index.html?collection=<your-uuid>`.
-- Anyone with that link can view the collection. Visitors with a name set can add beans to it (each bean is tagged with the contributor's name).
+- Everyone shares one bean list — every visitor sees every bean, regardless of who added it.
+- Visitors with a name set can add beans; each bean is tagged with the contributor's name so you can see who added it.
 - The UI only lets you edit/delete beans whose `added_by` matches your local UUID. Note: because there's no real authentication, this is honor-system only — anyone determined enough could write directly to the database. Add real auth before relying on it for anything sensitive.
