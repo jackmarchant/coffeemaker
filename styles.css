@@ -180,12 +180,6 @@ a {
   box-shadow: var(--shadow);
 }
 
-.collection-label {
-  margin: 0 0 10px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
 .auth-box {
   display: inline-flex;
   align-items: center;

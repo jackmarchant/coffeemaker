@@ -58,9 +58,7 @@ async function handleApi(req, res, url) {
 
   try {
     if (req.method === "GET" && !id) {
-      const collectionId = url.searchParams.get("collection_id");
-      if (!collectionId) return sendJson(res, 400, { error: "collection_id required" });
-      return sendJson(res, 200, listBeans(collectionId));
+      return sendJson(res, 200, listBeans());
     }
 
     if (req.method === "GET" && id) {
