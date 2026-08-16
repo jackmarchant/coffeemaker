@@ -171,15 +171,6 @@ a {
   font-style: italic;
 }
 
-.bean-card-readonly {
-  cursor: default;
-}
-
-.bean-card-readonly:hover {
-  transform: none;
-  box-shadow: var(--shadow);
-}
-
 .auth-box {
   display: inline-flex;
   align-items: center;
@@ -273,6 +264,11 @@ a {
   padding: 22px;
   border-radius: 14px;
   box-shadow: var(--shadow);
+}
+
+/* `display` here beats the browser's [hidden] rule, so restore it explicitly. */
+.form[hidden] {
+  display: none;
 }
 
 .field {

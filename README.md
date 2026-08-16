@@ -74,4 +74,5 @@ just don't get the long-lived cache benefit.
 - Each visitor picks a display name, which is stored in the browser's `localStorage` along with a generated UUID. There's no login.
 - Everyone shares one bean list — every visitor sees every bean, regardless of who added it.
 - Visitors with a name set can add beans; each bean is tagged with the contributor's name so you can see who added it.
-- The UI only lets you edit/delete beans whose `added_by` matches your local UUID. Note: because there's no real authentication, this is honor-system only — anyone determined enough could write directly to the database. Add real auth before relying on it for anything sensitive.
+- Any visitor can edit or delete any bean — the list is shared, so it's shared for writes too. Editing a bean preserves its original "Added by" credit rather than reassigning it to whoever made the edit.
+- There is **no authentication of any kind**, and the API enforces none: anyone who can reach the server can change or delete any bean. The UI used to hide edit/delete for beans added by someone else, but that was cosmetic only (a plain `curl` bypassed it) and it broke ordinary use — a visitor's identity is a UUID in `localStorage`, so clearing site data or switching devices locked them out of their own beans permanently. Add real auth before relying on this for anything sensitive.
