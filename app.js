@@ -154,10 +154,9 @@ async function renderList() {
   empty.hidden = true;
 
   list.innerHTML = beans
-    .map((b) => {
-      const editable = currentUser && b.added_by === currentUser.id;
-      return `
-      <li class="bean-card${editable ? "" : " bean-card-readonly"}" data-id="${escapeHtml(b.id)}" data-editable="${editable ? "1" : "0"}" tabindex="0" role="button" aria-label="${editable ? "Edit" : "View"} ${escapeHtml(b.name)}">
+    .map(
+      (b) => `
+      <li class="bean-card" data-id="${escapeHtml(b.id)}" tabindex="0" role="button" aria-label="Edit ${escapeHtml(b.name)}">
         <div class="bean-info">
           <h2 class="bean-name">${b.favorite ? '<span aria-label="favorite">❤️</span>' : ""}${escapeHtml(b.name)}</h2>
           <p class="bean-roaster">${escapeHtml(b.roaster || "")}</p>
@@ -166,14 +165,12 @@ async function renderList() {
         <div class="bean-stars" aria-label="${b.rating || 0} out of 5">
           ${starsHtml(b.rating)}
         </div>
-      </li>`;
-    })
+      </li>`
+    )
     .join("");
 
   list.querySelectorAll(".bean-card").forEach((card) => {
     const id = card.getAttribute("data-id");
-    const editable = card.getAttribute("data-editable") === "1";
-    if (!editable) return;
     const href = buildHref("edit.html", { id });
     card.addEventListener("click", () => { window.location.href = href; });
     card.addEventListener("keydown", (e) => {
@@ -215,6 +212,11 @@ async function fetchBeanById(id) {
   }
 }
 
+// The bean currently open on the edit page, or null when adding a new one.
+// Module-level so the form handlers stay correct across re-renders (e.g. when
+// the visitor changes their display name mid-edit).
+let currentBean = null;
+
 async function initEditPage() {
   loadSession();
   renderAuthBox();
@@ -228,60 +230,68 @@ async function initEditPage() {
   document.getElementById("backLink").href = backHref;
   document.getElementById("cancelLink").href = backHref;
 
-  if (!currentUser) {
+  // A display name is only needed to *add* a bean, so it can be attributed.
+  // Editing an existing bean keeps whoever added it, so no name is required.
+  if (!currentUser && !beanId) {
     gate.hidden = false;
     form.hidden = true;
     document.getElementById("gateLoginBtn").addEventListener("click", () => promptForName(refreshPage));
-    document.getElementById("pageTitle").textContent = beanId ? "Edit Bean" : "Add Bean";
+    document.getElementById("pageTitle").textContent = "Add Bean";
     return;
   }
 
   gate.hidden = true;
   form.hidden = false;
 
-  let existing = null;
+  currentBean = null;
   if (beanId) {
-    existing = await fetchBeanById(beanId);
-    if (!existing) {
+    currentBean = await fetchBeanById(beanId);
+    if (!currentBean) {
       showToast("Bean not found");
-      window.location.href = backHref;
-      return;
-    }
-    if (existing.added_by !== currentUser.id) {
-      showToast("You can only edit beans you added");
       window.location.href = backHref;
       return;
     }
   }
 
-  document.getElementById("pageTitle").textContent = existing ? "Edit Bean" : "Add Bean";
+  document.getElementById("pageTitle").textContent = currentBean ? "Edit Bean" : "Add Bean";
+
+  const deleteBtn = document.getElementById("deleteBtn");
+  deleteBtn.hidden = !currentBean;
+
+  if (currentBean) {
+    document.getElementById("name").value = currentBean.name || "";
+    document.getElementById("roaster").value = currentBean.roaster || "";
+    document.getElementById("roastType").value = currentBean.roast_type || "";
+    document.getElementById("notes").value = currentBean.notes || "";
+    document.getElementById("favorite").checked = !!currentBean.favorite;
+    setRating(Number(currentBean.rating) || 0);
+  }
+
+  bindFormHandlers(form, deleteBtn, backHref);
+}
+
+// Bind once per page load: initEditPage re-runs whenever the display name
+// changes, and re-binding would fire every save/delete twice.
+function bindFormHandlers(form, deleteBtn, backHref) {
+  if (form.dataset.bound === "1") return;
+  form.dataset.bound = "1";
 
   document.querySelectorAll(".star-btn").forEach((btn) => {
     btn.addEventListener("click", () => setRating(Number(btn.getAttribute("data-value"))));
   });
 
-  if (existing) {
-    document.getElementById("name").value = existing.name || "";
-    document.getElementById("roaster").value = existing.roaster || "";
-    document.getElementById("roastType").value = existing.roast_type || "";
-    document.getElementById("notes").value = existing.notes || "";
-    document.getElementById("favorite").checked = !!existing.favorite;
-    setRating(Number(existing.rating) || 0);
-
-    const deleteBtn = document.getElementById("deleteBtn");
-    deleteBtn.hidden = false;
-    deleteBtn.addEventListener("click", async () => {
-      if (!confirm(`Delete "${existing.name}"?`)) return;
-      try {
-        await api(`/api/beans/${encodeURIComponent(existing.id)}`, { method: "DELETE" });
-      } catch (error) {
-        console.error("delete failed", error);
-        showToast("Couldn't delete bean");
-        return;
-      }
-      window.location.href = backHref;
-    });
-  }
+  deleteBtn.addEventListener("click", async () => {
+    if (!currentBean) return;
+    if (!confirm(`Delete "${currentBean.name}"?`)) return;
+    try {
+      await api(`/api/beans/${encodeURIComponent(currentBean.id)}`, { method: "DELETE" });
+    } catch (error) {
+      console.error("delete failed", error);
+      showToast("Couldn't delete bean");
+      return;
+    }
+    window.location.href = backHref;
+  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -291,10 +301,7 @@ async function initEditPage() {
       return;
     }
 
-    const payload = {
-      collection_id: currentUser.id,
-      added_by: currentUser.id,
-      added_by_name: currentUser.name,
+    const details = {
       name,
       roaster: document.getElementById("roaster").value.trim() || null,
       rating: Number(document.getElementById("rating").value) || 0,
@@ -304,13 +311,23 @@ async function initEditPage() {
     };
 
     try {
-      if (existing) {
-        await api(`/api/beans/${encodeURIComponent(existing.id)}`, {
+      if (currentBean) {
+        // Leave collection_id/added_by/added_by_name off the payload so the
+        // original contributor keeps the credit for the bean.
+        await api(`/api/beans/${encodeURIComponent(currentBean.id)}`, {
           method: "PATCH",
-          body: JSON.stringify(payload),
+          body: JSON.stringify(details),
         });
       } else {
-        await api("/api/beans", { method: "POST", body: JSON.stringify(payload) });
+        await api("/api/beans", {
+          method: "POST",
+          body: JSON.stringify({
+            ...details,
+            collection_id: currentUser.id,
+            added_by: currentUser.id,
+            added_by_name: currentUser.name,
+          }),
+        });
       }
     } catch (error) {
       console.error("save failed", error);
